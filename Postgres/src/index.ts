@@ -1,89 +1,91 @@
-// // write a function to create a users table in your database.
-// import { Client } from 'pg'
- 
-// const client = new Client({
-//   connectionString: "postgresql://neondb_owner:ToSesd9braj3@ep-quiet-bird-a5mfgfg2.us-east-2.aws.neon.tech/neondb?sslmode=require"
-// })
+import { Client } from 'pg';
 
-// async function createUsersTable() {
-//     await client.connect()
-//     const result = await client.query(`
-//         CREATE TABLE users (
-//             id SERIAL PRIMARY KEY,
-//             username VARCHAR(50) UNIQUE NOT NULL,
-//             email VARCHAR(255) UNIQUE NOT NULL,
-//             password VARCHAR(255) NOT NULL,
-//             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-//         );
-//     `)
-//     console.log(result)
-// }
+const client = new Client({
+  connectionString: "ADD_YOUR_CONNECTION_STRING_HERE"
+});
 
-// createUsersTable();
-
-
-
-// // bug in a code:
-// import { Client } from 'pg';
-
-// // Async function to insert data into a table
-// async function insertData() {
-//   const client = new Client({
-//     host: 'localhost',
-//     port: 5432,
-//     database: 'postgres',
-//     user: 'postgres',
-//     password: 'mysecretpassword',
-//   });
-
-//   try {
-//     await client.connect(); // Ensure client connection is established
-//     const insertQuery = "INSERT INTO users (username, email, password) VALUES ('username2', 'user3@example.com', 'user_password');";
-//     const res = await client.query(insertQuery);
-//     console.log('Insertion success:', res); // Output insertion result
-//   } catch (err) {
-//     console.error('Error during the insertion:', err);
-//   } finally {
-//     await client.end(); // Close the client connection
-//   }
-// }
-
-// insertData();
-
-
-
-
-// lets fix them:
-
-const { Client } = require('pg');
-
-
-// Async function to fetch user data from the database given an email
-async function getUser(email: string) {
-    const client = new Client({
-        host: 'localhost',
-        port: 5432,
-        database: 'postgres',
-        user: 'neondb_owner',
-        password: 'ToSesd9braj3',
-    });
-    
-
-  
-    await client.connect(); // Ensure client connection is established
-    const query = 'SELECT * FROM users WHERE email = $1';
-    const values = [email];
-    const result = await client.query(query, values);
-    
-    if (result.rows.length > 0) {
-      console.log('User found:', result.rows[0]); // Output user data
-      return result.rows[0]; // Return the user data
-    } else {
-      console.log('No user found with the given email.');
-      return null; // Return null if no user was found
-    }
-  
+async function connectToDatabase() {
+  try {
+    await client.connect();
+    console.log("Connected to database");
+  } catch (error) {
+    console.error("Error connecting to database:", error);
+  }
 }
 
-// Example usage
-getUser('user5@example.com').catch(console.error);
+// 1. create a new table in the database Run this only once
+async function createUserTable(){
+  await client.connect();
+  const result = await client.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(255) NOT NULL UNIQUE,
+      name VARCHAR(255),
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  await client.end();   // Close the connection
+  console.log(result);
+}
+createUserTable();
+
+
+// 2.  insert a new user into the database
+async function insertUser(username: string, name: string, email: string, password: string) {
+  try {
+    const result = await client.query(`
+      INSERT INTO users (username, name, email, password)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [username, name, email, password]);
+
+    console.log("User inserted:", result.rows[0]);
+  } catch (error) {
+    console.error("Error inserting user:", error);
+  }
+}
+
+
+// 3. Delete a user in the database
+async function deleteUser(email: string) {
+  try {
+    const result = await client.query(`
+      DELETE FROM users
+      WHERE email = $1
+      RETURNING *
+    `, [email]);
+
+    console.log("User deleted:", result.rows[0]);
+  } catch (error) {
+    console.error("Error deleting user:", error);
+  }
+}
+
+
+// 4. get all users from the database
+async function getUsers() {
+  try {
+    const result = await client.query(`
+      SELECT * FROM users
+    `);
+
+    console.log("Users:", result.rows);
+  } catch (error) {
+    console.error("Error getting users:", error);
+  }
+}
+
+
+connectToDatabase()
+  .then(async () => {
+    await insertUser("anshu2", "anshu", "anshu2@gmail.com", "12345")    // You can add more users here by calling this function multiple times with different values
+    // await deleteUser("anshu2@gmail.com")
+    // await getUsers()
+
+    await client.end(); 
+  }) 
+  .catch((error) => {
+    console.error("Error connecting to database:", error);
+  });
